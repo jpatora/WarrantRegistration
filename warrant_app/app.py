@@ -956,6 +956,13 @@ The consolidated narrative section (earlier in the document) may show a combined
 def call_anthropic_validate(pdf_b64: str, extracted: dict) -> list:
     system = """You are a meticulous financial data auditor reviewing SID warrant registration data.
 
+ABSOLUTE PRE-FLIGHT RULE — read this before doing anything else:
+  Before you output a flag, look at the flag's message text. Find every pair of dollar amounts the message itself compares ("X vs Y", "should be X not Y", "shows X but extracted sum is Y", etc.). For each pair, strip thousands-separator commas and trailing-zero differences and parse the numbers. If the two numbers in the pair are mathematically equal, the flag is invalid and you MUST suppress it entirely. Do not output the flag, do not reword it, do not include a "note" version. Just drop it.
+
+  This applies to formatting-only differences too: "$1,112.61" and "$1112.61" are the same number. "$361,112.61" and "$361112.61" are the same number. "$1,000" and "$1,000.00" are the same number. Comma placement and decimal trailing zeros never constitute a discrepancy.
+
+  If after stripping formatting both numbers are equal, there is NO discrepancy and NO flag. Period.
+
 BEFORE generating any flag, you MUST complete a silent verification step:
   - Compute the expected value yourself from the PDF
   - Compare it to the extracted value
@@ -966,6 +973,7 @@ Find ONLY these issues:
 
 1. AMOUNT TYPOS: Extra or missing digits in a warrant amount (e.g. "$6,193.119" instead of "$6,193.19").
    Verify: does the extracted amount match the dollar figure printed on the warrant face? Flag only if clearly wrong.
+   The check is on DIGITS, not formatting. "$1112.61" and "$1,112.61" both contain the digits 1-1-1-2-6-1 → identical, no typo.
 
 2. MISSING PAYEES: A warrant has a blank or empty payee name.
 
@@ -984,7 +992,7 @@ Find ONLY these issues:
    Never compare a single warrant amount to a consolidated group total.
 
 5. FEE VERIFICATION:
-   Advisory fees (typically Bluestem Capital Partners) and placement/underwriting fees (typically Northland Securities, Ameritas Investment, SouthState|DuncanWilliams, or Access Bank) are a stated percentage of a stated base.
+   Advisory fees (typically Bluestem Capital Partners) and placement/underwriting fees (typically Northland Securities, Ameritas Investment, SouthState|DuncanWilliams, Access Bank, or DA Davidson & Co.) are a stated percentage of a stated base.
    The PDF explicitly states both, e.g. "advisory fees (2% of $14,517.11)".
 
    Step A — Identify the fee warrant:
@@ -998,7 +1006,17 @@ Find ONLY these issues:
    The underwriting/placement fee base = advisory fee base PLUS the advisory fee warrant.
    Flag ONLY if |computed_base − stated_base| > $0.05.
 
-   HARD STOP RULE: If your flag message says the calculation "appears correct" or shows matching dollar amounts on both sides, DELETE the flag entirely. Correct calculations produce no flags.
+ANTI-PATTERN EXAMPLE — this is what NOT to do:
+  BAD flag (do not produce anything like this):
+    "Wt# 1187 — Amount: shows $1,112.61 in extracted data but PDF states $1,112.61. However the consolidated narrative shows TAB Construction total as $361,112.61, but extracted warrant amounts sum to $361,112.61. The individual warrant 1187 amount appears to be missing a digit — should be $1,112.61 not $1112.61."
+
+  Why this flag is invalid:
+    - "$1,112.61" vs "$1,112.61" → identical numbers
+    - "$361,112.61" vs "$361,112.61" → identical numbers
+    - "$1,112.61" vs "$1112.61" → identical numbers (just a comma)
+  Every comparison in the message text has identical values on both sides. The pre-flight rule above requires you to suppress this flag entirely.
+
+HARD STOP RULE: If your flag message says the calculation "appears correct", shows matching dollar amounts on both sides of any comparison, or compares two values that differ only in comma/decimal formatting, DELETE the flag entirely. Correct calculations produce no flags. The flag-message-self-check is mandatory — read your own message before output.
 
 Return ONLY a JSON array. Empty array [] if no issues. No markdown, no explanation.
 [
@@ -1020,7 +1038,48 @@ Return ONLY a JSON array. Empty array [] if no issues. No markdown, no explanati
         ]}]
     })
     result = json.loads(text)
-    return result if isinstance(result, list) else []
+    if not isinstance(result, list):
+        return []
+
+    # Defense in depth: drop flags whose message text echoes the same numbers
+    # back at each other rather than reporting an actual discrepancy. The
+    # validator-LLM occasionally emits flags like "shows $1,112.61 but PDF
+    # states $1,112.61" or "should be $1,112.61 not $1112.61" — every
+    # comparison in the message has identical values on both sides.
+    #
+    # Heuristic: parse all dollar amounts from the flag's message, normalize
+    # to numeric (so "$1,112.61" and "$1112.61" compare as equal). If every
+    # distinct numeric value appears at least twice — i.e. the message is
+    # purely echoing repeated values — drop the flag. Legitimate
+    # discrepancy flags introduce at least one value only once.
+    def _normalize_amt(s: str) -> float:
+        try:
+            return round(float(s.replace('$', '').replace(',', '').replace(' ', '')), 2)
+        except (ValueError, AttributeError):
+            return float('nan')
+
+    _AMT_RE = re.compile(r'\$\s*[\d,]+(?:\.\d+)?')
+
+    filtered = []
+    for flag in result:
+        if not isinstance(flag, dict):
+            continue
+        msg = flag.get('message', '') or ''
+        amounts = _AMT_RE.findall(msg)
+        if len(amounts) >= 2:
+            parsed = [_normalize_amt(a) for a in amounts]
+            parsed = [v for v in parsed if v == v]  # drop NaN
+            if parsed:
+                from collections import Counter
+                counts = Counter(parsed)
+                # Suppress when every distinct value is echoed at least twice
+                # AND no value appears only once — signature of a flag where
+                # both sides of each claimed comparison are identical.
+                if min(counts.values()) >= 2:
+                    continue
+        filtered.append(flag)
+
+    return filtered
 
 # ── Excel: Sarpy County ───────────────────────────────────────────────────────
 def build_excel_sarpy(extracted: dict, dt_wt: date, dt_reg: date) -> bytes:
