@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SID Warrant Registration — Login</title>
+<link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:wght@400;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --ink:    #1a1a2e;
+    --paper:  #f5f0e8;
+    --cream:  #ede8db;
+    --rule:   #c8bfaa;
+    --accent: #2d5016;
+    --error:  #8b3a0f;
+    --mono:   'DM Mono', monospace;
+    --serif:  'Libre Baskerville', Georgia, serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--paper);
+    font-family: var(--serif);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background-image: repeating-linear-gradient(
+      0deg, transparent, transparent 27px,
+      rgba(180,170,150,0.18) 27px, rgba(180,170,150,0.18) 28px
+    );
+  }
+  .card {
+    background: var(--paper);
+    border: 1.5px solid var(--ink);
+    padding: 48px 52px;
+    width: 100%;
+    max-width: 400px;
+  }
+  .brand {
+    font-size: 0.72rem;
+    font-family: var(--mono);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 6px;
+  }
+  h1 {
+    font-size: 1.1rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    margin-bottom: 32px;
+    border-bottom: 2px solid var(--ink);
+    padding-bottom: 16px;
+  }
+  label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #6b6354;
+    margin-bottom: 8px;
+  }
+  input[type=password] {
+    width: 100%;
+    background: var(--cream);
+    border: 1.5px solid var(--rule);
+    padding: 11px 14px;
+    font-family: var(--mono);
+    font-size: 0.9rem;
+    color: var(--ink);
+    outline: none;
+    margin-bottom: 20px;
+    transition: border-color 0.2s;
+  }
+  input[type=password]:focus { border-color: var(--accent); }
+  button {
+    width: 100%;
+    background: var(--ink);
+    color: var(--paper);
+    border: none;
+    padding: 13px;
+    font-family: var(--mono);
+    font-size: 0.82rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  button:hover { background: var(--accent); }
+  .error-msg {
+    background: #fdf2ed;
+    border: 1.5px solid var(--error);
+    color: var(--error);
+    font-family: var(--mono);
+    font-size: 0.78rem;
+    padding: 10px 14px;
+    margin-bottom: 18px;
+  }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="brand">Bluestem Capital Partners</div>
+  <h1>SID Warrant Registration</h1>
+  {% if error %}
+  <div class="error-msg">⚠ {{ error }}</div>
+  {% endif %}
+  <form method="POST">
+    <label>Password</label>
+    <input type="password" name="password" autofocus placeholder="Enter password">
+    <button type="submit">Sign In</button>
+  </form>
+</div>
+</body>
+</html>
