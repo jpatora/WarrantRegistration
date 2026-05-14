@@ -413,6 +413,97 @@
     text-underline-offset: 3px;
   }
   .reset-link:hover { color: var(--ink); }
+  /* ── Tab navigation ── */
+  .tab-nav {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 28px;
+    border-bottom: 2px solid var(--rule);
+    padding-bottom: 0;
+  }
+  .tab-btn {
+    font-family: var(--mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 8px 18px;
+    border: 1px solid var(--rule);
+    border-bottom: none;
+    background: var(--cream);
+    color: var(--muted);
+    cursor: pointer;
+    border-radius: 3px 3px 0 0;
+    position: relative;
+    bottom: -2px;
+    transition: color 0.15s, background 0.15s;
+  }
+  .tab-btn.active {
+    background: var(--paper);
+    color: var(--ink);
+    border-color: var(--rule);
+    border-bottom: 2px solid var(--paper);
+    font-weight: 500;
+  }
+  .tab-btn:hover:not(.active) { color: var(--ink); }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── GF Calls panel ── */
+  #calls-result {
+    margin-top: 20px;
+    padding: 16px;
+    background: var(--cream);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    font-family: var(--mono);
+    font-size: 0.8rem;
+    color: var(--ink);
+    display: none;
+  }
+  #calls-result.success { border-color: var(--success); color: var(--success); }
+  #calls-result.error   { border-color: var(--error);   color: var(--error); }
+  #calls-download-btn {
+    margin-top: 16px;
+    display: none;
+  }
+  /* ── Warrant Query ── */
+  #query-input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px rgba(45,80,22,0.08);
+  }
+  .query-entry {
+    margin-bottom: 24px;
+    border-left: 3px solid var(--rule);
+    padding-left: 14px;
+  }
+  .query-entry .q-label {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .query-entry .q-text {
+    font-size: 0.88rem;
+    color: var(--ink);
+    margin-bottom: 10px;
+    font-style: italic;
+  }
+  .query-entry .a-label {
+    font-family: var(--mono);
+    font-size: 0.68rem;
+    color: var(--accent);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .query-entry .a-text {
+    font-size: 0.88rem;
+    color: var(--ink);
+    line-height: 1.6;
+    white-space: pre-wrap;
+  }
 </style>
 </head>
 <body>
@@ -425,6 +516,19 @@
 </header>
 
 <main>
+
+  <!-- ── Tab navigation ── -->
+  <div class="tab-nav">
+    <button class="tab-btn active" onclick="switchTab('registration', this)">Warrant Registration</button>
+    <button class="tab-btn" onclick="switchTab('gf-calls', this)">GF Warrant Calls</button>
+    <button class="tab-btn" onclick="switchTab('ach-report', this)">ACH File Report</button>
+    <button class="tab-btn" onclick="switchTab('warrant-query', this)">Warrant Query</button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- Tab 1: Warrant Registration (existing content) -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div id="tab-registration" class="tab-panel active">
 
   <!-- ── Upload Form ── -->
   <div id="upload-form">
@@ -521,9 +625,122 @@
       </table>
     </div>
 
-    <button id="download-btn">⬇ Download Excel File</button>
+    <button id="download-btn">⬇ Download Packet Files</button>
     <span class="reset-link" id="reset-link">← Start over with a new PDF</span>
   </div>
+
+  </div><!-- end tab-registration -->
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- Tab 2: GF Warrant Calls                        -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div id="tab-gf-calls" class="tab-panel">
+
+    <div id="calls-upload-form">
+      <div class="section-label">Step 1 — Upload Cash Balances File</div>
+      <div id="calls-drop-zone" class="drop-zone" style="margin-bottom:20px;">
+        <input type="file" id="calls-file-input" accept=".xlsx,.xls">
+        <span class="drop-icon">📊</span>
+        <div class="drop-label"><strong>Click to select</strong> or drag & drop</div>
+        <div class="drop-label" style="margin-top:4px">CashBalances .xlsx or .xls file</div>
+        <div id="calls-file-name"></div>
+      </div>
+
+      <div class="section-label">Step 2 — Enter Call Date</div>
+      <div class="date-row">
+        <div class="field">
+          <label>Call Date</label>
+          <input type="date" id="calls-call-date">
+        </div>
+        <div class="field">
+          <label>Call Day Label <span style="font-size:0.72rem; color:var(--muted)">(auto-filled)</span></label>
+          <input type="text" id="calls-call-day" placeholder="e.g. TUESDAY, MAY 12, 2026" style="font-family:var(--mono); font-size:0.8rem; padding:8px; border:1px solid var(--rule); background:var(--paper); width:100%; border-radius:3px;">
+        </div>
+      </div>
+
+      <div class="section-label">Step 3 — Generate</div>
+      <button id="calls-submit-btn" class="submit-btn" disabled>Generate Call Files</button>
+    </div>
+
+    <div id="calls-progress" style="display:none; margin-top:20px;">
+      <span class="spinner"></span>
+      <span id="calls-progress-msg">Generating call files…</span>
+    </div>
+
+    <div id="calls-result"></div>
+    <button id="calls-download-btn" class="download-btn" style="display:none; margin-top:16px;">⬇ Download Call Files (.zip)</button>
+    <span class="reset-link" id="calls-reset-link" style="display:none;">← Generate another set</span>
+
+  </div><!-- end tab-gf-calls -->
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- Tab 3: Warrant ACH File Report                 -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div id="tab-ach-report" class="tab-panel">
+
+    <div class="section-label" style="margin-bottom:16px;">Warrant ACH File Report</div>
+    <p style="font-size:0.82rem; color:var(--muted); margin-bottom:18px; line-height:1.5;">
+      Upload a PDF of scanned physical warrant faces (front + back) to generate a registration
+      log spreadsheet with all warrant details, interest rates, and next interest dates
+      looked up from the 8038 Info file.
+    </p>
+
+    <div id="wrl-drop" style="border:2px dashed #c5ccd6; border-radius:8px; padding:28px 20px; text-align:center; cursor:pointer; margin-bottom:14px; transition:border-color 0.2s;"
+         onclick="document.getElementById('wrl-pdf-input').click()"
+         ondragover="event.preventDefault(); this.style.borderColor='var(--accent)'"
+         ondragleave="this.style.borderColor='#c5ccd6'"
+         ondrop="event.preventDefault(); this.style.borderColor='#c5ccd6'; wrlHandleFile(event.dataTransfer.files[0])">
+      <div style="font-size:0.85rem;"><strong>Click to select</strong> or drag &amp; drop</div>
+      <div style="font-size:0.8rem; color:var(--muted); margin-top:4px;">Warrant faces PDF</div>
+      <input type="file" id="wrl-pdf-input" accept=".pdf" style="display:none" onchange="wrlHandleFile(this.files[0])">
+    </div>
+    <div id="wrl-filename" style="font-size:0.78rem; color:var(--muted); margin-bottom:14px; min-height:1.2em;"></div>
+
+    <button id="wrl-btn" disabled
+            style="width:100%; padding:11px; background:var(--ink); color:#fff; border:none; border-radius:6px; font-family:var(--mono); font-size:0.78rem; letter-spacing:0.08em; text-transform:uppercase; cursor:pointer; transition:background 0.2s; opacity:0.45;"
+            onclick="wrlSubmit()">
+      Generate Registration Log
+    </button>
+    <div id="wrl-status" style="font-size:0.8rem; color:var(--muted); margin-top:10px; min-height:1.2em;"></div>
+    <div id="wrl-error"  style="font-size:0.8rem; color:#c0392b; margin-top:8px; display:none;"></div>
+
+  </div><!-- end tab-ach-report -->
+
+  <!-- ══════════════════════════════════════════════ -->
+  <!-- Tab 4: Warrant Query                           -->
+  <!-- ══════════════════════════════════════════════ -->
+  <div id="tab-warrant-query" class="tab-panel">
+
+    <div class="section-label" style="margin-bottom:8px;">Warrant Query</div>
+    <p style="font-size:0.82rem; color:var(--muted); margin-bottom:6px; line-height:1.5;">
+      Ask any question about the warrant history dataset — totals by SID, payee lookups, outstanding balances, holder summaries, and more.
+    </p>
+    <div id="warrant-data-date" style="font-family:var(--mono); font-size:0.72rem; color:var(--muted); margin-bottom:18px; min-height:1em;"></div>
+
+    <div style="position:relative;">
+      <textarea id="query-input"
+        placeholder="e.g. What is the total principal for Geis, Inc.? Which SIDs have over $1M outstanding? Who are the top 5 holders by principal?"
+        style="width:100%; min-height:90px; padding:12px 14px; font-family:var(--serif); font-size:0.88rem; color:var(--ink); background:var(--paper); border:1px solid var(--rule); border-radius:4px; resize:vertical; line-height:1.5; outline:none;"
+        onkeydown="if(event.key==='Enter' && (event.metaKey||event.ctrlKey)) submitQuery()"
+      ></textarea>
+      <div style="font-size:0.68rem; color:var(--muted); font-family:var(--mono); margin-top:4px; text-align:right;">
+        ⌘↵ or Ctrl↵ to submit
+      </div>
+    </div>
+
+    <button id="query-btn" onclick="submitQuery()"
+      style="margin-top:12px; width:100%; padding:11px; background:var(--ink); color:#fff; border:none; border-radius:6px; font-family:var(--mono); font-size:0.78rem; letter-spacing:0.08em; text-transform:uppercase; cursor:pointer; transition:background 0.2s;">
+      Ask
+    </button>
+
+    <div id="query-progress" style="display:none; margin-top:16px; font-family:var(--mono); font-size:0.8rem; color:var(--muted);">
+      <span class="spinner"></span> Querying warrant data…
+    </div>
+    <div id="query-error" style="display:none; margin-top:14px; font-size:0.82rem; color:var(--error); font-family:var(--mono);"></div>
+
+    <div id="query-history" style="margin-top:20px;"></div>
+
+  </div><!-- end tab-warrant-query -->
 
 </main>
 
@@ -624,8 +841,11 @@
 
     try {
       const resp = await fetch('/api/process', { method: 'POST', body: formData });
-      const json = await resp.json();
-
+      let json;
+      try { json = await resp.json(); } catch(_) {
+        if (resp.status === 413) throw new Error('PDF is too large to upload (max 50MB).');
+        throw new Error(`Server error ${resp.status} — please try again.`);
+      }
       if (!resp.ok || !json.success) {
         throw new Error(json.error || 'Unknown error');
       }
@@ -714,9 +934,12 @@
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement('a');
       const sid  = extractedData.sid_number;
-      const reg  = dtReg.replaceAll('-', '').slice(4) + '-' + dtReg.slice(5,7) + '-' + dtReg.slice(0,4);
+      const mm   = dtReg.slice(5,7);
+      const dd   = dtReg.slice(8,10);
+      const yyyy = dtReg.slice(0,4);
+      // Use zip extension — server always returns a zip containing the reg sheet + 8038 forms
       a.href     = url;
-      a.download = `SID_${sid}_Warrants_to_Register_${dtReg.slice(5,7)}-${dtReg.slice(8,10)}-${dtReg.slice(0,4)}.xlsx`;
+      a.download = `SID_${sid}_${mm}-${dd}-${yyyy}.zip`;
       a.click();
       URL.revokeObjectURL(url);
 
@@ -724,7 +947,7 @@
       errorBox.textContent = '⚠ ' + err.message;
       errorBox.style.display = 'block';
     } finally {
-      btn.textContent = '⬇ Download Excel File';
+      btn.textContent = '⬇ Download Packet Files';
       btn.disabled = false;
     }
   });
@@ -747,6 +970,303 @@
     uploadForm.style.display = 'block';
     uploadForm.style.opacity = '1';
   });
+</script>
+
+
+<script>
+  let wrlFile = null;
+
+  function wrlHandleFile(file) {
+    if (!file || file.type !== 'application/pdf') return;
+    wrlFile = file;
+    document.getElementById('wrl-filename').textContent = file.name;
+    const btn = document.getElementById('wrl-btn');
+    btn.disabled = false;
+    btn.style.opacity = '1';
+    btn.style.cursor = 'pointer';
+  }
+
+  async function wrlSubmit() {
+    const btn    = document.getElementById('wrl-btn');
+    const status = document.getElementById('wrl-status');
+    const errBox = document.getElementById('wrl-error');
+    errBox.style.display = 'none';
+    btn.disabled = true;
+    btn.style.opacity = '0.45';
+
+    try {
+      // ── Step 1: upload PDF and start background job ──
+      status.textContent = 'Uploading PDF…';
+      const fd = new FormData();
+      fd.append('pdf', wrlFile);
+      const startResp = await fetch('/api/register-warrants', { method: 'POST', body: fd });
+
+      if (!startResp.ok) {
+        let errMsg = `Server error ${startResp.status}`;
+        try { const e = await startResp.json(); errMsg = e.error || errMsg; } catch(_) {
+          if (startResp.status === 413) errMsg = 'PDF is too large to upload (max 50MB).';
+        }
+        throw new Error(errMsg);
+      }
+
+      const { job_id } = await startResp.json();
+      if (!job_id) throw new Error('No job ID returned from server.');
+
+      // ── Step 2: poll for completion ──
+      let elapsed = 0;
+      while (true) {
+        await new Promise(r => setTimeout(r, 5000));  // poll every 5s
+        elapsed += 5;
+
+        const mins = Math.floor(elapsed / 60);
+        const secs = elapsed % 60;
+        const timeStr = mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+        status.textContent = `Extracting warrants… ${timeStr} elapsed (large PDFs may take 2–4 minutes).`;
+
+        const pollResp = await fetch(`/api/register-warrants/status/${job_id}`);
+        if (!pollResp.ok) throw new Error(`Status check failed (${pollResp.status})`);
+        const poll = await pollResp.json();
+
+        if (poll.status === 'error') throw new Error(poll.error || 'Extraction failed');
+
+        if (poll.status === 'done') {
+          // ── Step 3: download the file ──
+          status.textContent = 'Downloading…';
+          const dlResp = await fetch(`/api/register-warrants/download/${job_id}`);
+          if (!dlResp.ok) throw new Error('Download failed');
+          const blob = await dlResp.blob();
+          const url  = URL.createObjectURL(blob);
+          const a    = document.createElement('a');
+          a.download = poll.filename || 'Warrant_Registration_Log.xlsx';
+          a.href = url;
+          a.click();
+          URL.revokeObjectURL(url);
+          status.textContent = '✓ Downloaded successfully.';
+          break;
+        }
+        // status === 'running' — keep polling
+      }
+
+    } catch (err) {
+      errBox.textContent  = '⚠ ' + err.message;
+      errBox.style.display = 'block';
+      status.textContent  = '';
+    } finally {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+    }
+  }
+
+  // ── Tab switching ──────────────────────────────────────────────────────────
+  function switchTab(tabName, btnEl) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + tabName).classList.add('active');
+    btnEl.classList.add('active');
+    if (tabName === 'warrant-query') loadWarrantDate();
+  }
+
+  async function loadWarrantDate() {
+    const el = document.getElementById('warrant-data-date');
+    if (!el || el.dataset.loaded) return;
+    try {
+      const resp = await fetch('/api/warrant-date');
+      const data = await resp.json();
+      if (data.date) {
+        el.textContent = 'Data as of: ' + data.date;
+        el.dataset.loaded = '1';
+      }
+    } catch (e) { /* silent */ }
+  }
+
+  // ── GF Calls ───────────────────────────────────────────────────────────────
+  const callsFileInput  = document.getElementById('calls-file-input');
+  const callsFileName   = document.getElementById('calls-file-name');
+  const callsDropZone   = document.getElementById('calls-drop-zone');
+  const callsCallDate   = document.getElementById('calls-call-date');
+  const callsCallDay    = document.getElementById('calls-call-day');
+  const callsSubmitBtn  = document.getElementById('calls-submit-btn');
+  const callsProgress   = document.getElementById('calls-progress');
+  const callsProgressMsg = document.getElementById('calls-progress-msg');
+  const callsResult     = document.getElementById('calls-result');
+  const callsDownloadBtn = document.getElementById('calls-download-btn');
+  const callsResetLink  = document.getElementById('calls-reset-link');
+
+  let callsZipBlob = null;
+  let callsZipName = '';
+
+  // File input
+  callsFileInput.addEventListener('change', () => {
+    if (callsFileInput.files[0]) {
+      callsFileName.textContent = callsFileInput.files[0].name;
+      checkCallsReady();
+    }
+  });
+
+  // Drag & drop for calls zone
+  callsDropZone.addEventListener('dragover', e => { e.preventDefault(); callsDropZone.classList.add('drag-over'); });
+  callsDropZone.addEventListener('dragleave', () => callsDropZone.classList.remove('drag-over'));
+  callsDropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    callsDropZone.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f) {
+      callsFileInput.files = e.dataTransfer.files;
+      callsFileName.textContent = f.name;
+      checkCallsReady();
+    }
+  });
+  callsDropZone.addEventListener('click', () => callsFileInput.click());
+
+  // Auto-fill call day label when date changes
+  callsCallDate.addEventListener('change', () => {
+    if (callsCallDate.value) {
+      const d = new Date(callsCallDate.value + 'T12:00:00');
+      const dayNames = ['SUNDAY','MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY','SATURDAY'];
+      const monthNames = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE',
+                          'JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
+      callsCallDay.value = `${dayNames[d.getDay()]}, ${monthNames[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+    }
+    checkCallsReady();
+  });
+
+  function checkCallsReady() {
+    callsSubmitBtn.disabled = !(callsFileInput.files[0] && callsCallDate.value);
+  }
+
+  // Submit
+  callsSubmitBtn.addEventListener('click', async () => {
+    callsSubmitBtn.disabled = true;
+    callsProgress.style.display = 'block';
+    callsProgressMsg.textContent = 'Generating call files…';
+    callsResult.style.display = 'none';
+    callsResult.className = '';
+    callsDownloadBtn.style.display = 'none';
+    callsResetLink.style.display = 'none';
+    callsZipBlob = null;
+
+    try {
+      const fd = new FormData();
+      fd.append('cash_file', callsFileInput.files[0]);
+      fd.append('call_date', callsCallDate.value);
+      fd.append('call_day',  callsCallDay.value);
+
+      const resp = await fetch('/api/gf-calls', { method: 'POST', body: fd });
+
+      if (!resp.ok) {
+        const err = await resp.json().catch(() => ({ error: resp.statusText }));
+        throw new Error(err.error || 'Server error');
+      }
+
+      callsZipBlob = await resp.blob();
+      // Get filename from Content-Disposition header if available
+      const cd = resp.headers.get('Content-Disposition') || '';
+      const m  = cd.match(/filename="?([^"]+)"?/);
+      callsZipName = m ? m[1] : `GF_Calls_${callsCallDate.value}.zip`;
+
+      callsResult.textContent = `✓ Done. Ready to download ${callsZipName}`;
+      callsResult.className   = 'success';
+      callsResult.style.display = 'block';
+      callsDownloadBtn.style.display = 'inline-block';
+      callsResetLink.style.display   = 'inline-block';
+
+    } catch (err) {
+      callsResult.textContent = '⚠ ' + err.message;
+      callsResult.className   = 'error';
+      callsResult.style.display = 'block';
+      callsSubmitBtn.disabled = false;
+    } finally {
+      callsProgress.style.display = 'none';
+    }
+  });
+
+  // Download zip
+  callsDownloadBtn.addEventListener('click', () => {
+    if (!callsZipBlob) return;
+    const url = URL.createObjectURL(callsZipBlob);
+    const a   = document.createElement('a');
+    a.href     = url;
+    a.download = callsZipName;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+
+  // Reset
+  callsResetLink.addEventListener('click', () => {
+    callsFileInput.value   = '';
+    callsFileName.textContent = '';
+    callsCallDate.value    = '';
+    callsCallDay.value     = '';
+    callsResult.style.display    = 'none';
+    callsDownloadBtn.style.display = 'none';
+    callsResetLink.style.display   = 'none';
+    callsSubmitBtn.disabled = true;
+    callsZipBlob = null;
+  });
+
+  // ── Warrant Query ─────────────────────────────────────────────────────────
+  async function submitQuery() {
+    const input    = document.getElementById('query-input');
+    const btn      = document.getElementById('query-btn');
+    const progress = document.getElementById('query-progress');
+    const errorEl  = document.getElementById('query-error');
+    const history  = document.getElementById('query-history');
+
+    const question = input.value.trim();
+    if (!question) return;
+
+    btn.disabled = true;
+    btn.style.opacity = '0.5';
+    progress.style.display = 'block';
+    errorEl.style.display  = 'none';
+
+    try {
+      // 4-minute timeout aligned with gunicorn worker timeout. The first query of the
+      // day typically takes 30-60s (cache write); subsequent queries within 5 minutes
+      // benefit from prompt caching and return much faster.
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 240000);
+
+      let resp;
+      try {
+        resp = await fetch('/api/warrant-query', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ question }),
+          signal: controller.signal
+        });
+      } catch (fetchErr) {
+        if (fetchErr.name === 'AbortError') {
+          throw new Error('Request timed out after 4 minutes. The server may be under heavy load — please try again in a moment.');
+        }
+        throw new Error('Connection failed: ' + fetchErr.message + '. If this persists, the server may have restarted — try again.');
+      } finally {
+        clearTimeout(timeoutId);
+      }
+
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || 'Request failed');
+
+      // Prepend new Q&A to history
+      const entry = document.createElement('div');
+      entry.className = 'query-entry';
+      entry.innerHTML =
+        '<div class="q-label">Question</div>' +
+        '<div class="q-text">' + question.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>' +
+        '<div class="a-label">Answer</div>' +
+        '<div class="a-text">' + data.answer.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>';
+      history.insertBefore(entry, history.firstChild);
+      input.value = '';
+
+    } catch (err) {
+      errorEl.textContent = '⚠ ' + err.message;
+      errorEl.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      progress.style.display = 'none';
+    }
+  }
 </script>
 </body>
 </html>
